@@ -10,35 +10,44 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Activer CORS pour toutes les requêtes
 app.use(cors());
 
+const mysql = require("mysql2");
+const connection = mysql.createConnection({
+  host: "localhost",
+  user: "root",
+  password: "root",
+  database: "estiam_4_25"
+});
+
+connection.connect();
+
 app.get("/", (req, res) => {
   res.send("Le serveur marche, mais il y a rien à voir ici");
 });
 
 app.get("/posts", (req, res) => {
-  const data = [
-    {
-      title: "Article 1",
-      uri: "https://cdn.pixabay.com/video/2024/12/03/244754_large.mp4",
-      author: {
-        pseudo: "Tom",
-        avatar: "https://placehold.jp/3d4070/ffffff/50x50.png"
-      },
-      like: 1123456,
-      mediaKind: "movie"
-    },
-    {
-      title: "Article 2",
-      uri: "https://placehold.jp/200x500.png?text=PHOTO",
-      author: {
-        pseudo: "Titi",
-        avatar: "https://placehold.jp/ab6742/ffffff/50x50.png"
-      },
-      like: 5678,
-      mediaKind: "picture"
-    }
-  ];
+  connection.query(
+    "SELECT * FROM post p JOIN user u ON p.author_id = u.id ",
+    (erreur, lignes, champs) => {
+      if (erreur) throw erreur;
 
-  res.send(data);
+      for (let ligne of lignes) {
+        ligne.author = {
+          pseudo: ligne.pseudo,
+          avatar: ligne.avatar
+        };
+        ligne.likeCount = ligne.like_count;
+        ligne.mediaKind = ligne.media_kind;
+        delete ligne.pseudo;
+        delete ligne.avatar;
+        delete ligne.password;
+        delete ligne.email;
+        delete ligne.like_count;
+        delete ligne.media_kind;
+      }
+
+      res.send(lignes);
+    }
+  );
 });
 
 // Démarrer le serveur
