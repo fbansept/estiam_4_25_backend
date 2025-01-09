@@ -7,6 +7,11 @@ const bodyParser = require("body-parser");
 app.use(bodyParser.json()); // for parsing application/json
 app.use(bodyParser.urlencoded({ extended: true }));
 
+const jwtUtils = require("jsonwebtoken"); // gestion des jwt
+const JWT_SECRET = "azerty123";
+
+const bcrypt = require("bcrypt"); // gestion du hashage des mot de passe
+
 // Activer CORS pour toutes les requêtes
 app.use(cors());
 
@@ -46,6 +51,51 @@ app.get("/posts", (req, res) => {
       }
 
       res.send(lignes);
+    }
+  );
+});
+
+app.post("/login", async (req, res) => {
+  console.log(req.body);
+
+  connection.query(
+    "SELECT * FROM user u WHERE u.email = ?",
+    [req.body.email],
+    async (erreur, lignes, champs) => {
+      if (erreur) throw erreur;
+
+      if (lignes.length > 0) {
+        const motDePasseHashe = lignes[0].password;
+        const motDePasseClair = req.body.password;
+
+        const compatible = await bcrypt.compare(
+          motDePasseClair,
+          motDePasseHashe
+        );
+
+        if (compatible) {
+          const jwt = jwtUtils.sign({ sub: req.body.email }, JWT_SECRET);
+          res.send(jwt);
+        } else {
+          res.sendStatus(403);
+        }
+      } else {
+        res.sendStatus(403);
+      }
+    }
+  );
+});
+
+app.post("/sign-in", async (req, res) => {
+  const hash = await bcrypt.hash(req.body.password, 10);
+
+  connection.query(
+    "INSERT INTO user (email, password, pseudo) VALUES (?,?,?) ",
+    [req.body.email, hash, req.body.pseudo],
+    (erreur, lignes, champs) => {
+      if (erreur) throw erreur;
+
+      res.sendStatus(201);
     }
   );
 });
