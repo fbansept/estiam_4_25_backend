@@ -8,7 +8,7 @@ app.use(bodyParser.json()); // for parsing application/json
 app.use(bodyParser.urlencoded({ extended: true }));
 
 const jwtUtils = require("jsonwebtoken"); // gestion des jwt
-const JWT_SECRET = "azerty123";
+const JWT_SECRET = "azerty1234";
 
 const bcrypt = require("bcrypt"); // gestion du hashage des mot de passe
 
@@ -30,29 +30,38 @@ app.get("/", (req, res) => {
 });
 
 app.get("/posts", (req, res) => {
-  connection.query(
-    "SELECT * FROM post p JOIN user u ON p.author_id = u.id ",
-    (erreur, lignes, champs) => {
-      if (erreur) throw erreur;
+  const token = req["headers"]["authorization"];
+  const jwt = token.substring(7);
 
-      for (let ligne of lignes) {
-        ligne.author = {
-          pseudo: ligne.pseudo,
-          avatar: ligne.avatar
-        };
-        ligne.likeCount = ligne.like_count;
-        ligne.mediaKind = ligne.media_kind;
-        delete ligne.pseudo;
-        delete ligne.avatar;
-        delete ligne.password;
-        delete ligne.email;
-        delete ligne.like_count;
-        delete ligne.media_kind;
+  jwtUtils.verify(jwt, JWT_SECRET, (err, user) => {
+    console.log(err);
+
+    if (err) return res.sendStatus(403);
+
+    connection.query(
+      "SELECT * FROM post p JOIN user u ON p.author_id = u.id ",
+      (erreur, lignes, champs) => {
+        if (erreur) throw erreur;
+
+        for (let ligne of lignes) {
+          ligne.author = {
+            pseudo: ligne.pseudo,
+            avatar: ligne.avatar
+          };
+          ligne.likeCount = ligne.like_count;
+          ligne.mediaKind = ligne.media_kind;
+          delete ligne.pseudo;
+          delete ligne.avatar;
+          delete ligne.password;
+          delete ligne.email;
+          delete ligne.like_count;
+          delete ligne.media_kind;
+        }
+
+        res.send(lignes);
       }
-
-      res.send(lignes);
-    }
-  );
+    );
+  });
 });
 
 app.post("/login", async (req, res) => {
